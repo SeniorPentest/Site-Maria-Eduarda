@@ -303,7 +303,7 @@ select, input, textarea { font-family: inherit; }
 .carousel-btn:hover { background: var(--red); border-color: var(--red); color: var(--white); box-shadow: var(--shadow-md); }
 .carousel-btn-prev { left: 0; }
 .carousel-btn-next { right: 0; }
-.carousel-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.carousel-btn:disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
 .carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 32px; }
 .carousel-dot {
     width: 10px; height: 10px; border-radius: 50%;
@@ -312,6 +312,8 @@ select, input, textarea { font-family: inherit; }
 }
 .carousel-dot:hover { background: var(--red-light); }
 .carousel-dot.active { background: var(--red); width: 28px; border-radius: 5px; }
+.carousel-track { touch-action: pan-y; user-select: none; }
+.carousel-track.is-dragging { cursor: grabbing; }
 
 .snack-card {
     background: var(--light-bg); border: 1px solid var(--border);
@@ -350,7 +352,6 @@ select, input, textarea { font-family: inherit; }
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
     flex-wrap: unset !important;
-    transform: none !important;
 }
 
 .value-card {
@@ -541,10 +542,6 @@ select, input, textarea { font-family: inherit; }
     .compliance-seals { grid-template-columns: 1fr 1fr; }
     .snacks-carousel-wrapper, .plans-wrapper { padding: 0; }
     .snack-card, .plan-card { width: 100%; }
-    .snacks-carousel-wrapper .carousel-btn,
-    .snacks-carousel-wrapper .carousel-dots,
-    .plans-wrapper .carousel-btn,
-    .plans-wrapper .carousel-dots { display: none; }
 }
 
 @media (max-width: 480px) {

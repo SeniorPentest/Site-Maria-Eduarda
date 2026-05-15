@@ -1,4 +1,4 @@
-// Carrossel com autoplay (Snacks e Planos)
+// Carrossel manual (Snacks e Planos)
 function initCarousel(containerSelector) {
     const carouselWrapper = document.querySelector(containerSelector);
     if (!carouselWrapper) return;
@@ -15,62 +15,105 @@ function initCarousel(containerSelector) {
     const dotsContainer = carouselWrapper.querySelector('.carousel-dots');
 
     let currentSlide = 0;
-    let autoplayId = null;
+    let maxIndex = 0;
 
     carousel.classList.add('is-carousel');
-
-    if (dotsContainer) {
-        dotsContainer.innerHTML = '';
-        for (let i = 0; i < totalSlides; i++) {
-            const dot = document.createElement('button');
-            dot.classList.add('carousel-dot');
-            if (i === 0) dot.classList.add('active');
-            dot.addEventListener('click', () => { currentSlide = i; updateCarousel(); resetAutoplay(); });
-            dotsContainer.appendChild(dot);
-        }
-    }
 
     const getGap = () => parseFloat(getComputedStyle(carousel).columnGap || getComputedStyle(carousel).gap || '0') || 0;
 
     const getMetrics = () => {
         const cardWidth = cards[0].offsetWidth + getGap();
         const visibleCards = Math.max(1, Math.round(carouselWrapper.offsetWidth / cardWidth));
-        const maxIndex = Math.max(0, totalSlides - visibleCards);
+        maxIndex = Math.max(0, totalSlides - visibleCards);
         return { cardWidth, maxIndex };
     };
 
-    function updateCarousel() {
-        const { cardWidth, maxIndex } = getMetrics();
-        if (currentSlide > maxIndex) currentSlide = maxIndex;
-        carousel.style.transform = 'translateX(-' + (currentSlide * cardWidth) + 'px)';
-        if (dotsContainer) {
-            dotsContainer.querySelectorAll('.carousel-dot').forEach((dot, i) => dot.classList.toggle('active', i === currentSlide));
+    const updateDots = () => {
+        if (!dotsContainer) return;
+        dotsContainer.querySelectorAll('.carousel-dot').forEach((dot, i) => dot.classList.toggle('active', i === currentSlide));
+    };
+
+    const buildDots = () => {
+        if (!dotsContainer) return;
+        getMetrics();
+        dotsContainer.innerHTML = '';
+        for (let i = 0; i <= maxIndex; i++) {
+            const dot = document.createElement('button');
+            dot.classList.add('carousel-dot');
+            dot.setAttribute('aria-label', 'Ir para slide ' + (i + 1));
+            if (i === currentSlide) dot.classList.add('active');
+            dot.addEventListener('click', () => { currentSlide = i; updateCarousel(); });
+            dotsContainer.appendChild(dot);
         }
+    };
+
+    function updateCarousel() {
+        const { cardWidth, maxIndex: newMaxIndex } = getMetrics();
+        if (currentSlide > newMaxIndex) currentSlide = newMaxIndex;
+        if (currentSlide < 0) currentSlide = 0;
+        carousel.style.transform = 'translateX(-' + (currentSlide * cardWidth) + 'px)';
+        if (prevBtn) prevBtn.disabled = currentSlide === 0;
+        if (nextBtn) nextBtn.disabled = currentSlide === newMaxIndex;
+        updateDots();
     }
 
     function nextSlide() {
         const { maxIndex } = getMetrics();
-        currentSlide = (currentSlide >= maxIndex) ? 0 : currentSlide + 1;
+        currentSlide = (currentSlide >= maxIndex) ? maxIndex : currentSlide + 1;
         updateCarousel();
     }
+
     function prevSlide() {
-        const { maxIndex } = getMetrics();
-        currentSlide = (currentSlide > 0) ? currentSlide - 1 : maxIndex;
+        currentSlide = (currentSlide > 0) ? currentSlide - 1 : 0;
         updateCarousel();
     }
 
-    const startAutoplay = () => { stopAutoplay(); autoplayId = setInterval(nextSlide, 3000); };
-    const stopAutoplay = () => { if (autoplayId) { clearInterval(autoplayId); autoplayId = null; } };
-    const resetAutoplay = () => { stopAutoplay(); startAutoplay(); };
+    if (prevBtn) prevBtn.addEventListener('click', prevSlide);
+    if (nextBtn) nextBtn.addEventListener('click', nextSlide);
 
-    if (prevBtn) prevBtn.addEventListener('click', () => { prevSlide(); resetAutoplay(); });
-    if (nextBtn) nextBtn.addEventListener('click', () => { nextSlide(); resetAutoplay(); });
-    window.addEventListener('resize', updateCarousel);
-    carouselWrapper.addEventListener('mouseenter', stopAutoplay);
-    carouselWrapper.addEventListener('mouseleave', startAutoplay);
+    let isDragging = false;
+    let hasDragged = false;
+    let dragStartX = 0;
+    let dragDeltaX = 0;
 
+    carousel.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        hasDragged = false;
+        dragStartX = e.clientX;
+        dragDeltaX = 0;
+        carousel.classList.add('is-dragging');
+        carousel.setPointerCapture(e.pointerId);
+    });
+
+    carousel.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        dragDeltaX = e.clientX - dragStartX;
+        if (Math.abs(dragDeltaX) > 8) hasDragged = true;
+    });
+
+    const finishDrag = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        carousel.classList.remove('is-dragging');
+        if (carousel.hasPointerCapture(e.pointerId)) carousel.releasePointerCapture(e.pointerId);
+        if (dragDeltaX < -50) nextSlide();
+        else if (dragDeltaX > 50) prevSlide();
+        else updateCarousel();
+    };
+
+    carousel.addEventListener('pointerup', finishDrag);
+    carousel.addEventListener('pointercancel', finishDrag);
+    carousel.addEventListener('click', (e) => {
+        if (!hasDragged) return;
+        e.preventDefault();
+        e.stopPropagation();
+        hasDragged = false;
+    }, true);
+
+    window.addEventListener('resize', () => { buildDots(); updateCarousel(); });
+
+    buildDots();
     updateCarousel();
-    startAutoplay();
 }
 
 // Carrossel de ARRASTAR sem autoplay (Values - mobile only)
@@ -99,6 +142,7 @@ function initDragCarousel(containerSelector) {
         for (let i = 0; i < totalSlides; i++) {
             const dot = document.createElement('button');
             dot.classList.add('carousel-dot');
+            dot.setAttribute('aria-label', 'Ir para pilar ' + (i + 1));
             if (i === 0) dot.classList.add('active');
             dot.addEventListener('click', () => { currentSlide = i; updateDrag(); });
             dotsContainer.appendChild(dot);
